@@ -5,10 +5,14 @@ import { useEffect, useReducer } from "react";
 import Loader from "./components/Loader";
 import Error from "./components/Error";
 import StartScreen from "./components/StartScreen";
+import Question from "./components/Question";
 
 const initialState = {
   questions: [],
-  status: "loading" // "loading", "error", "ready", "active", "finished"
+  status: "loading", // "loading", "error", "ready", "active", "finished"
+  index: 0,
+  answer: null,
+  points: 0,
 }
 
 function reducer(state, action) {
@@ -18,6 +22,19 @@ function reducer(state, action) {
         ...state,
         questions: action.payload,
         status: "ready"
+      }
+    case "start":
+      return {
+        ...state,
+        status: "active"
+      }
+    case "newAnswer":
+      const question = state.questions.at(state.index)
+      return {
+        ...state,
+        answer: action.payload,
+        // calculate points
+        points: action.payload === question.correctOption ? state.points + question.points : state.points
       }
     case "dataFailed":
       return {
@@ -31,16 +48,14 @@ function reducer(state, action) {
 }
 
 const App = () => {
-  const [ { questions, status }, dispatch ] = useReducer(reducer, initialState);
+  const [ { questions, status, index, answer, points }, dispatch ] = useReducer(reducer, initialState);
   const numQuestions = questions.length;
-
   useEffect(() => {
     const fetchData = async () => {
       try {
         const response = await fetch("http://localhost:9000/questions");
         if ( !response.ok ) {
           throw new Error('Failed to fetch data');
-
         }
         const data = await response.json();
         dispatch({ type: "dataReceived", payload: data });
@@ -58,7 +73,13 @@ const App = () => {
     <Main>
       {status === "loading" && <Loader/>}
       {status === "error" && <Error/>}
-      {status === "ready" && <StartScreen numQuestions={numQuestions}/>}
+      {status === "ready" && <StartScreen numQuestions={numQuestions} dispatch={dispatch}/>}
+      {status === "active" && <Question
+        question={questions[index]}
+        dispatch={dispatch}
+        answer={answer}
+        points={points}
+      />}
     </Main>
   </div>
 }
